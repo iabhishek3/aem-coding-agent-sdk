@@ -23,26 +23,27 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Modern Light Theme - Clean and crisp */
+    --background: 0 0% 99%;
+    --foreground: 224 71% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 71% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 224 71% 4%;
+    --primary: 220 90% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 9% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 90% 56%;
+    --radius: 0.75rem;
     
     /* Safe area CSS variables */
     --safe-area-inset-top: env(safe-area-inset-top);
@@ -72,25 +73,26 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 217.2 91.2% 8%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217.2 91.2% 8%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 220 13% 46%;
-    --ring: 217.2 91.2% 59.8%;
+    /* Modern Dark Theme - Elegant and professional */
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --card: 224 71% 6%;
+    --card-foreground: 213 31% 91%;
+    --popover: 224 71% 6%;
+    --popover-foreground: 213 31% 91%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 213 31% 91%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 10% 64%;
+    --accent: 215 28% 17%;
+    --accent-foreground: 213 31% 91%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 217 91% 60%;
   }
 }
 
@@ -706,6 +708,171 @@
 .prose code::after {
   content: "" !important;
   display: none !important;
+}
+
+/* Modern UI Enhancements */
+@layer components {
+  /* Modern card styling with subtle depth */
+  .modern-card {
+    @apply bg-card rounded-xl border border-border/50;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .modern-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  }
+
+  .dark .modern-card {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+    border-color: hsl(var(--border) / 0.5);
+  }
+
+  .dark .modern-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    border-color: hsl(var(--border) / 0.8);
+  }
+
+  /* Modern input styling */
+  .modern-input {
+    @apply rounded-lg border border-border/60 bg-background px-4 py-2.5;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50;
+    @apply placeholder:text-muted-foreground/60;
+    transition: all 0.2s ease;
+  }
+
+  .dark .modern-input {
+    @apply bg-secondary/50 border-border/40;
+  }
+
+  /* Modern button base */
+  .modern-btn {
+    @apply rounded-lg font-medium transition-all duration-200;
+    @apply active:scale-[0.98];
+  }
+
+  .modern-btn-primary {
+    @apply modern-btn bg-primary text-primary-foreground;
+    @apply hover:bg-primary/90 hover:shadow-md hover:shadow-primary/20;
+  }
+
+  .modern-btn-secondary {
+    @apply modern-btn bg-secondary text-secondary-foreground;
+    @apply hover:bg-secondary/80;
+  }
+
+  .modern-btn-ghost {
+    @apply modern-btn hover:bg-accent/50;
+  }
+
+  /* Glassmorphism effect for overlays */
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl;
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  .dark .glass {
+    @apply bg-background/70;
+  }
+
+  /* Sidebar styling */
+  .sidebar-modern {
+    @apply bg-card/50 backdrop-blur-sm;
+    border-right: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .dark .sidebar-modern {
+    @apply bg-card/30;
+  }
+
+  /* Session/Project item hover effect */
+  .list-item-modern {
+    @apply rounded-lg px-3 py-2 cursor-pointer;
+    @apply transition-all duration-150 ease-out;
+  }
+
+  .list-item-modern:hover {
+    @apply bg-accent/60;
+  }
+
+  .list-item-modern.active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .dark .list-item-modern:hover {
+    @apply bg-accent/40;
+  }
+
+  .dark .list-item-modern.active {
+    @apply bg-primary/20;
+  }
+
+  /* Chat bubble styling */
+  .chat-bubble {
+    @apply rounded-2xl px-4 py-3;
+  }
+
+  .chat-bubble-user {
+    @apply chat-bubble bg-primary text-primary-foreground;
+    border-bottom-right-radius: 0.5rem;
+  }
+
+  .chat-bubble-assistant {
+    @apply chat-bubble bg-secondary/50;
+    border-bottom-left-radius: 0.5rem;
+  }
+
+  .dark .chat-bubble-assistant {
+    @apply bg-secondary/30;
+  }
+
+  /* Subtle gradient backgrounds */
+  .gradient-subtle {
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.3) 100%);
+  }
+
+  .dark .gradient-subtle {
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--secondary) / 0.2) 100%);
+  }
+
+  /* Badge styling */
+  .badge-modern {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-primary/10 text-primary;
+  }
+
+  .badge-modern-secondary {
+    @apply badge-modern bg-secondary text-secondary-foreground;
+  }
+
+  /* Divider with fade */
+  .divider-fade {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)) 20%, hsl(var(--border)) 80%, transparent);
+  }
+
+  /* Smooth hover glow effect */
+  .hover-glow {
+    @apply transition-shadow duration-300;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
+  }
+
+  /* Floating action button */
+  .fab {
+    @apply rounded-full p-3 shadow-lg;
+    @apply bg-primary text-primary-foreground;
+    @apply hover:shadow-xl hover:shadow-primary/20;
+    @apply active:scale-95;
+    transition: all 0.2s ease;
+  }
+
+  /* Skeleton loading animation */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-muted;
+  }
 }
 
 /* Custom spinner animation for mobile compatibility */
