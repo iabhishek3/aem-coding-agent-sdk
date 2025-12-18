@@ -76,14 +76,25 @@ function mapCliOptionsToSDK(options = {}) {
   }
 
   // Map model (default to sonnet)
-  // Map model (default to sonnet)
   sdkOptions.model = options.model || 'sonnet';
 
   // Map system prompt configuration
-  sdkOptions.systemPrompt = {
-    type: 'preset',
-    preset: 'claude_code'  // Required to use CLAUDE.md
-  };
+  // Support custom agent system prompts while preserving CLAUDE.md functionality
+  if (options.customSystemPrompt) {
+    // Use custom system prompt from agent
+    // Append to claude_code preset to preserve CLAUDE.md loading
+    sdkOptions.systemPrompt = {
+      type: 'preset',
+      preset: 'claude_code'
+    };
+    // Add custom instructions that will be prepended to the conversation
+    sdkOptions.appendSystemPrompt = options.customSystemPrompt;
+  } else {
+    sdkOptions.systemPrompt = {
+      type: 'preset',
+      preset: 'claude_code'  // Required to use CLAUDE.md
+    };
+  }
 
   // Map setting sources for CLAUDE.md loading
   // This loads CLAUDE.md from project, user (~/.config/claude/CLAUDE.md), and local directories

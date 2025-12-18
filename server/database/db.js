@@ -57,22 +57,46 @@ console.log('');
 
 const runMigrations = () => {
   try {
-    const tableInfo = db.prepare("PRAGMA table_info(users)").all();
-    const columnNames = tableInfo.map(col => col.name);
+    // User table migrations
+    const userTableInfo = db.prepare("PRAGMA table_info(users)").all();
+    const userColumns = userTableInfo.map(col => col.name);
 
-    if (!columnNames.includes('git_name')) {
+    if (!userColumns.includes('git_name')) {
       console.log('Running migration: Adding git_name column');
       db.exec('ALTER TABLE users ADD COLUMN git_name TEXT');
     }
 
-    if (!columnNames.includes('git_email')) {
+    if (!userColumns.includes('git_email')) {
       console.log('Running migration: Adding git_email column');
       db.exec('ALTER TABLE users ADD COLUMN git_email TEXT');
     }
 
-    if (!columnNames.includes('has_completed_onboarding')) {
+    if (!userColumns.includes('has_completed_onboarding')) {
       console.log('Running migration: Adding has_completed_onboarding column');
       db.exec('ALTER TABLE users ADD COLUMN has_completed_onboarding BOOLEAN DEFAULT 0');
+    }
+
+    // Agents table migrations - check if table exists first
+    try {
+      const agentsTableInfo = db.prepare("PRAGMA table_info(agents)").all();
+      if (agentsTableInfo.length > 0) {
+        const agentColumns = agentsTableInfo.map(col => col.name);
+
+        if (!agentColumns.includes('source')) {
+          console.log('Running migration: Adding source column to agents');
+          db.exec("ALTER TABLE agents ADD COLUMN source TEXT DEFAULT 'database'");
+          db.exec("CREATE INDEX IF NOT EXISTS idx_agents_source ON agents(source)");
+        }
+
+        if (!agentColumns.includes('category')) {
+          console.log('Running migration: Adding category column to agents');
+          db.exec("ALTER TABLE agents ADD COLUMN category TEXT DEFAULT 'general'");
+          db.exec("CREATE INDEX IF NOT EXISTS idx_agents_category ON agents(category)");
+        }
+      }
+    } catch (agentsMigrationError) {
+      // Table might not exist yet, that's okay - it will be created by init.sql
+      console.log('Agents table migrations skipped (table may not exist yet)');
     }
 
     console.log('Database migrations completed successfully');
@@ -332,6 +356,213 @@ const credentialsDb = {
   }
 };
 
+// Agent templates that will be seeded for new users
+const AGENT_TEMPLATES = [
+  {
+    name: 'code-reviewer',
+    displayName: 'Code Reviewer',
+    description: 'Reviews code for quality, security, and best practices',
+    systemPrompt: `You are an expert code reviewer. Focus on:
+- Code quality and readability
+- Security vulnerabilities (OWASP top 10)
+- Performance optimizations
+- Best practices and design patterns
+- Potential bugs and edge cases
+
+Always provide specific, actionable feedback with code examples.`
+  },
+  {
+    name: 'bug-fixer',
+    displayName: 'Bug Fixer',
+    description: 'Systematic debugging and fix suggestions',
+    systemPrompt: `You are a debugging expert. Your approach:
+- Analyze the error/bug systematically
+- Identify root causes, not just symptoms
+- Provide step-by-step fix instructions
+- Explain why the bug occurred
+- Suggest preventive measures
+
+Be thorough but focused on solving the immediate issue.`
+  },
+  {
+    name: 'doc-writer',
+    displayName: 'Documentation Writer',
+    description: 'Generate documentation, comments, and README files',
+    systemPrompt: `You are a technical documentation specialist. You excel at:
+- Writing clear, concise documentation
+- Creating comprehensive README files
+- Adding helpful code comments
+- Generating API documentation
+- Writing usage examples
+
+Focus on clarity and completeness while avoiding unnecessary verbosity.`
+  },
+  {
+    name: 'refactorer',
+    displayName: 'Refactorer',
+    description: 'Code optimization and restructuring',
+    systemPrompt: `You are a refactoring expert. Focus on:
+- Improving code structure and organization
+- Reducing complexity and duplication
+- Applying SOLID principles
+- Optimizing performance
+- Maintaining backwards compatibility
+
+Always explain the reasoning behind refactoring decisions.`
+  },
+  {
+    name: 'test-writer',
+    displayName: 'Test Writer',
+    description: 'Generate unit tests and test scenarios',
+    systemPrompt: `You are a testing expert. Your focus:
+- Writing comprehensive unit tests
+- Identifying edge cases and boundary conditions
+- Creating meaningful test descriptions
+- Using appropriate testing patterns (AAA, etc.)
+- Achieving good code coverage
+
+Prioritize test quality over quantity.`
+  }
+];
+
+// Agents database operations
+const agentsDb = {
+  // Create a new agent
+  createAgent: (userId, name, displayName, description, systemPrompt, isTemplate = false) => {
+    try {
+      const stmt = db.prepare('INSERT INTO agents (user_id, name, display_name, description, system_prompt, is_template) VALUES (?, ?, ?, ?, ?, ?)');
+      const result = stmt.run(userId, name, displayName, description, systemPrompt, isTemplate ? 1 : 0);
+      return { id: result.lastInsertRowid, name, displayName, description, systemPrompt, isTemplate };
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Get all agents for a user
+  getAgents: (userId) => {
+    try {
+      const rows = db.prepare('SELECT id, name, display_name, description, system_prompt, is_template, is_active, created_at, updated_at FROM agents WHERE user_id = ? ORDER BY is_template DESC, display_name ASC').all(userId);
+      return rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        displayName: row.display_name,
+        description: row.description,
+        systemPrompt: row.system_prompt,
+        isTemplate: row.is_template === 1,
+        isActive: row.is_active === 1,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Get agent by name for a user
+  getAgentByName: (userId, name) => {
+    try {
+      const row = db.prepare('SELECT id, name, display_name, description, system_prompt, is_template, is_active FROM agents WHERE user_id = ? AND name = ? AND is_active = 1').get(userId, name);
+      if (!row) return null;
+      return {
+        id: row.id,
+        name: row.name,
+        displayName: row.display_name,
+        description: row.description,
+        systemPrompt: row.system_prompt,
+        isTemplate: row.is_template === 1,
+        isActive: row.is_active === 1
+      };
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Get agent by ID
+  getAgentById: (agentId) => {
+    try {
+      const row = db.prepare('SELECT id, user_id, name, display_name, description, system_prompt, is_template, is_active FROM agents WHERE id = ?').get(agentId);
+      if (!row) return null;
+      return {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        displayName: row.display_name,
+        description: row.description,
+        systemPrompt: row.system_prompt,
+        isTemplate: row.is_template === 1,
+        isActive: row.is_active === 1
+      };
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Update an agent
+  updateAgent: (userId, agentId, updates) => {
+    try {
+      const { name, displayName, description, systemPrompt, isActive } = updates;
+      const fields = [];
+      const values = [];
+
+      if (name !== undefined) { fields.push('name = ?'); values.push(name); }
+      if (displayName !== undefined) { fields.push('display_name = ?'); values.push(displayName); }
+      if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+      if (systemPrompt !== undefined) { fields.push('system_prompt = ?'); values.push(systemPrompt); }
+      if (isActive !== undefined) { fields.push('is_active = ?'); values.push(isActive ? 1 : 0); }
+
+      fields.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(agentId, userId);
+
+      const stmt = db.prepare(`UPDATE agents SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`);
+      const result = stmt.run(...values);
+      return result.changes > 0;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Delete an agent
+  deleteAgent: (userId, agentId) => {
+    try {
+      const stmt = db.prepare('DELETE FROM agents WHERE id = ? AND user_id = ?');
+      const result = stmt.run(agentId, userId);
+      return result.changes > 0;
+    } catch (err) {
+      throw err;
+    }
+  },
+
+  // Seed template agents for a user
+  seedTemplates: (userId) => {
+    try {
+      const existingAgents = agentsDb.getAgents(userId);
+      const existingNames = new Set(existingAgents.map(a => a.name));
+
+      for (const template of AGENT_TEMPLATES) {
+        if (!existingNames.has(template.name)) {
+          agentsDb.createAgent(
+            userId,
+            template.name,
+            template.displayName,
+            template.description,
+            template.systemPrompt,
+            true // isTemplate
+          );
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error('Error seeding agent templates:', err);
+      return false;
+    }
+  },
+
+  // Get template definitions (not from DB, just the templates)
+  getTemplateDefinitions: () => {
+    return AGENT_TEMPLATES;
+  }
+};
+
 // Backward compatibility - keep old names pointing to new system
 const githubTokensDb = {
   createGithubToken: (userId, tokenName, githubToken, description = null) => {
@@ -357,5 +588,6 @@ export {
   userDb,
   apiKeysDb,
   credentialsDb,
-  githubTokensDb // Backward compatibility
+  githubTokensDb, // Backward compatibility
+  agentsDb
 };

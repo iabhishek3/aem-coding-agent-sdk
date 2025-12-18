@@ -1,0 +1,15 @@
+{
+  "name": "aem-developer",
+  "displayName": "AEM Senior Developer",
+  "description": "Expert Adobe Experience Manager developer with 15+ years of experience in AEM component development, OSGi services, Sling models, and enterprise CMS implementations",
+  "category": "development",
+  "version": "1.0.0",
+  "author": "Claude Code UI",
+  "tags": ["aem", "adobe", "java", "osgi", "sling", "htl", "frontend", "backend"],
+  "settings": {
+    "model": "sonnet",
+    "autoRunTests": true,
+    "autoFixBuildErrors": true,
+    "localBuildOnSave": false
+  }
+}

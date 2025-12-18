@@ -34,6 +34,7 @@ import { MicButton } from './MicButton.jsx';
 import { api, authenticatedFetch } from '../utils/api';
 import Fuse from 'fuse.js';
 import CommandMenu from './CommandMenu';
+import AgentPicker from './AgentPicker';
 
 
 // Helper function to decode HTML entities in text
@@ -1680,12 +1681,7 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
   const streamTimerRef = useRef(null);
   const commandQueryTimerRef = useRef(null);
   const [debouncedInput, setDebouncedInput] = useState('');
-  const [showFileDropdown, setShowFileDropdown] = useState(false);
-  const [fileList, setFileList] = useState([]);
-  const [filteredFiles, setFilteredFiles] = useState([]);
-  const [selectedFileIndex, setSelectedFileIndex] = useState(-1);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [atSymbolPosition, setAtSymbolPosition] = useState(-1);
   const [canAbortSession, setCanAbortSession] = useState(false);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const scrollPositionRef = useRef({ height: 0, top: 0 });
@@ -1705,6 +1701,13 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
   const [cursorModel, setCursorModel] = useState(() => {
     return localStorage.getItem('cursor-model') || 'gpt-5';
   });
+
+  // Agent selection state
+  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [showAgentPicker, setShowAgentPicker] = useState(false);
+  const [agentSearchQuery, setAgentSearchQuery] = useState('');
+  const [atPosition, setAtPosition] = useState(-1);
+
   // Load permission mode for the current session
   useEffect(() => {
     if (selectedSession?.id) {
@@ -3480,36 +3483,6 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
     return result;
   };
 
-  // Handle @ symbol detection and file filtering
-  useEffect(() => {
-    const textBeforeCursor = input.slice(0, cursorPosition);
-    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-    
-    if (lastAtIndex !== -1) {
-      const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
-      // Check if there's a space after the @ symbol (which would end the file reference)
-      if (!textAfterAt.includes(' ')) {
-        setAtSymbolPosition(lastAtIndex);
-        setShowFileDropdown(true);
-        
-        // Filter files based on the text after @
-        const filtered = fileList.filter(file => 
-          file.name.toLowerCase().includes(textAfterAt.toLowerCase()) ||
-          file.path.toLowerCase().includes(textAfterAt.toLowerCase())
-        ).slice(0, 10); // Limit to 10 results
-        
-        setFilteredFiles(filtered);
-        setSelectedFileIndex(-1);
-      } else {
-        setShowFileDropdown(false);
-        setAtSymbolPosition(-1);
-      }
-    } else {
-      setShowFileDropdown(false);
-      setAtSymbolPosition(-1);
-    }
-  }, [input, cursorPosition, fileList]);
-
   // Debounced input handling
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -3852,10 +3825,14 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
           resume: !!currentSessionId,
           toolsSettings: toolsSettings,
           permissionMode: permissionMode,
-          images: uploadedImages // Pass images to backend
+          images: uploadedImages, // Pass images to backend
+          agentId: selectedAgent?.id // Pass agent ID for custom system prompt
         }
       });
     }
+
+    // Clear selected agent after sending
+    setSelectedAgent(null);
 
     setInput('');
     setAttachedImages([]);
@@ -3872,7 +3849,7 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
     if (selectedProject) {
       safeLocalStorage.removeItem(`draft_input_${selectedProject.name}`);
     }
-  }, [input, isLoading, selectedProject, attachedImages, currentSessionId, selectedSession, provider, permissionMode, onSessionActive, cursorModel, sendMessage, setInput, setAttachedImages, setUploadingImages, setImageErrors, setIsTextareaExpanded, textareaRef, setChatMessages, setIsLoading, setCanAbortSession, setClaudeStatus, setIsUserScrolledUp, scrollToBottom]);
+  }, [input, isLoading, selectedProject, attachedImages, currentSessionId, selectedSession, provider, permissionMode, onSessionActive, cursorModel, sendMessage, setInput, setAttachedImages, setUploadingImages, setImageErrors, setIsTextareaExpanded, textareaRef, setChatMessages, setIsLoading, setCanAbortSession, setClaudeStatus, setIsUserScrolledUp, scrollToBottom, selectedAgent]);
 
   // Store handleSubmit in ref so handleCustomCommand can access it
   useEffect(() => {
@@ -3947,40 +3924,8 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
       }
     }
 
-    // Handle file dropdown navigation
-    if (showFileDropdown && filteredFiles.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedFileIndex(prev => 
-          prev < filteredFiles.length - 1 ? prev + 1 : 0
-        );
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedFileIndex(prev => 
-          prev > 0 ? prev - 1 : filteredFiles.length - 1
-        );
-        return;
-      }
-      if (e.key === 'Tab' || e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedFileIndex >= 0) {
-          selectFile(filteredFiles[selectedFileIndex]);
-        } else if (filteredFiles.length > 0) {
-          selectFile(filteredFiles[0]);
-        }
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setShowFileDropdown(false);
-        return;
-      }
-    }
-    
     // Handle Tab key for mode switching (only when dropdowns are not showing)
-    if (e.key === 'Tab' && !showFileDropdown && !showCommandMenu) {
+    if (e.key === 'Tab' && !showCommandMenu) {
       e.preventDefault();
       const modes = ['default', 'acceptEdits', 'bypassPermissions', 'plan'];
       const currentIndex = modes.indexOf(permissionMode);
@@ -4014,43 +3959,6 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
         }
       }
       // Shift+Enter: Allow default behavior (new line)
-    }
-  };
-
-  const selectFile = (file) => {
-    const textBeforeAt = input.slice(0, atSymbolPosition);
-    const textAfterAtQuery = input.slice(atSymbolPosition);
-    const spaceIndex = textAfterAtQuery.indexOf(' ');
-    const textAfterQuery = spaceIndex !== -1 ? textAfterAtQuery.slice(spaceIndex) : '';
-    
-    const newInput = textBeforeAt + '@' + file.path + ' ' + textAfterQuery;
-    const newCursorPos = textBeforeAt.length + 1 + file.path.length + 1;
-    
-    // Immediately ensure focus is maintained
-    if (textareaRef.current && !textareaRef.current.matches(':focus')) {
-      textareaRef.current.focus();
-    }
-    
-    // Update input and cursor position
-    setInput(newInput);
-    setCursorPosition(newCursorPos);
-    
-    // Hide dropdown
-    setShowFileDropdown(false);
-    setAtSymbolPosition(-1);
-    
-    // Set cursor position synchronously 
-    if (textareaRef.current) {
-      // Use requestAnimationFrame for smoother updates
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-          // Ensure focus is maintained
-          if (!textareaRef.current.matches(':focus')) {
-            textareaRef.current.focus();
-          }
-        }
-      });
     }
   };
 
@@ -4125,6 +4033,48 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
         clearTimeout(commandQueryTimerRef.current);
       }
     }
+
+    // Detect @mention for agent selection (only when no slash command is active)
+    const atPattern = /(^|\s)@(\S*)$/;
+    const atMatch = textBeforeCursor.match(atPattern);
+
+    if (atMatch && !match) {
+      const atPos = atMatch.index + atMatch[1].length; // Position of the @
+      const query = atMatch[2]; // Text after the @
+
+      setAtPosition(atPos);
+      setShowAgentPicker(true);
+      setAgentSearchQuery(query);
+    } else if (!atMatch) {
+      // No @mention detected
+      setShowAgentPicker(false);
+      setAtPosition(-1);
+      setAgentSearchQuery('');
+    }
+  };
+
+  // Handle agent selection from picker
+  const handleAgentSelect = (agent) => {
+    setSelectedAgent(agent);
+    setShowAgentPicker(false);
+
+    // Remove the @query from input and don't add anything (agent is shown as a badge)
+    if (atPosition >= 0) {
+      const beforeAt = input.slice(0, atPosition);
+      const afterAt = input.slice(atPosition);
+      // Find end of @mention (until space or end)
+      const spaceIndex = afterAt.indexOf(' ', 1);
+      const afterQuery = spaceIndex !== -1 ? afterAt.slice(spaceIndex) : '';
+      setInput(beforeAt + afterQuery.trimStart());
+    }
+
+    setAtPosition(-1);
+    setAgentSearchQuery('');
+  };
+
+  // Clear selected agent
+  const handleClearAgent = () => {
+    setSelectedAgent(null);
   };
 
   const handleTextareaClick = (e) => {
@@ -4600,37 +4550,6 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
             </div>
           )}
           
-          {/* File dropdown - positioned outside dropzone to avoid conflicts */}
-          {showFileDropdown && filteredFiles.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 backdrop-blur-sm">
-              {filteredFiles.map((file, index) => (
-                <div
-                  key={file.path}
-                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 touch-manipulation ${
-                    index === selectedFileIndex
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                  onMouseDown={(e) => {
-                    // Prevent textarea from losing focus on mobile
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    selectFile(file);
-                  }}
-                >
-                  <div className="font-medium text-sm">{file.name}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                    {file.path}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Command Menu */}
           <CommandMenu
             commands={filteredCommands}
@@ -4657,6 +4576,50 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
             frequentCommands={commandQuery ? [] : frequentCommands}
           />
 
+          {/* Agent Picker */}
+          <AgentPicker
+            isOpen={showAgentPicker}
+            onSelect={handleAgentSelect}
+            onClose={() => {
+              setShowAgentPicker(false);
+              setAtPosition(-1);
+              setAgentSearchQuery('');
+            }}
+            searchQuery={agentSearchQuery}
+            position={{
+              bottom: textareaRef.current
+                ? window.innerHeight - textareaRef.current.getBoundingClientRect().top + 8
+                : 90,
+              left: textareaRef.current
+                ? textareaRef.current.getBoundingClientRect().left
+                : 16
+            }}
+          />
+
+          {/* Selected Agent Badge */}
+          {selectedAgent && (
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="font-medium">{selectedAgent.displayName}</span>
+                <button
+                  onClick={handleClearAgent}
+                  className="ml-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                  title="Remove agent"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Agent active for this message
+              </span>
+            </div>
+          )}
+
           <div {...getRootProps()} className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-600 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-500 focus-within:border-blue-500 transition-all duration-200 overflow-hidden ${isTextareaExpanded ? 'chat-input-expanded' : ''}`}>
             <input {...getInputProps()} />
             <textarea
@@ -4679,7 +4642,7 @@ function ChatInterface({ selectedProject, selectedSession, ws, sendMessage, mess
                 const isExpanded = e.target.scrollHeight > lineHeight * 2;
                 setIsTextareaExpanded(isExpanded);
               }}
-              placeholder={`Type / for commands, @ for files, or ask ${provider === 'cursor' ? 'Cursor' : 'Claude'} anything...`}
+              placeholder={`Type / for commands, @ for agents, or ask ${provider === 'cursor' ? 'Cursor' : 'Claude'} anything...`}
               disabled={isLoading}
               className="chat-input-placeholder block w-full pl-12 pr-20 sm:pr-40 py-1.5 sm:py-4 bg-transparent rounded-2xl focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 disabled:opacity-50 resize-none min-h-[50px] sm:min-h-[80px] max-h-[40vh] sm:max-h-[300px] overflow-y-auto text-sm sm:text-base leading-[21px] sm:leading-6 transition-all duration-200"
               style={{ height: '50px' }}

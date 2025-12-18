@@ -9,6 +9,7 @@ import CursorLogo from './CursorLogo';
 import CredentialsSettings from './CredentialsSettings';
 import GitSettings from './GitSettings';
 import TasksSettings from './TasksSettings';
+import AgentSettings from './AgentSettings';
 import LoginModal from './LoginModal';
 import { authenticatedFetch } from '../utils/api';
 
@@ -766,6 +767,16 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'tools' }) {
                 }`}
               >
                 Tasks
+              </button>
+              <button
+                onClick={() => setActiveTab('agents')}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'agents'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Agents
               </button>
             </div>
           </div>
@@ -2096,6 +2107,13 @@ function Settings({ isOpen, onClose, projects = [], initialTab = 'tools' }) {
             {activeTab === 'api' && (
               <div className="space-y-6 md:space-y-8">
                 <CredentialsSettings />
+              </div>
+            )}
+
+            {/* Agents Tab */}
+            {activeTab === 'agents' && (
+              <div className="space-y-6 md:space-y-8">
+                <AgentSettings />
               </div>
             )}
           </div>

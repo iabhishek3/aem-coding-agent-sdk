@@ -69,10 +69,12 @@ import mcpUtilsRoutes from './routes/mcp-utils.js';
 import commandsRoutes from './routes/commands.js';
 import settingsRoutes from './routes/settings.js';
 import agentRoutes from './routes/agent.js';
+import agentsRoutes from './routes/agents.js';
 import projectsRoutes from './routes/projects.js';
 import cliAuthRoutes from './routes/cli-auth.js';
 import userRoutes from './routes/user.js';
-import { initializeDatabase } from './database/db.js';
+import { initializeDatabase, agentsDb } from './database/db.js';
+import agentLoader from '../agents/index.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
 
 // File system watcher for projects folder
@@ -260,6 +262,9 @@ app.use('/api/user', authenticateToken, userRoutes);
 
 // Agent API Routes (uses API key authentication)
 app.use('/api/agent', agentRoutes);
+
+// Agents (personas) API Routes (protected)
+app.use('/api/agents', authenticateToken, agentsRoutes);
 
 // Serve public files (like api-docs.html)
 app.use(express.static(path.join(__dirname, '../public')));
@@ -718,8 +723,33 @@ function handleChatConnection(ws) {
                 console.log('📁 Project:', data.options?.projectPath || 'Unknown');
                 console.log('🔄 Session:', data.options?.sessionId ? 'Resume' : 'New');
 
+                // Check if an agent is specified and fetch its system prompt
+                let options = { ...data.options };
+                if (data.options?.agentId) {
+                    const agentId = data.options.agentId;
+                    console.log('🤖 Agent ID:', agentId);
+
+                    // Handle both file-based and database agents
+                    if (typeof agentId === 'string' && agentId.startsWith('file:')) {
+                        // File-based agent
+                        const agentName = agentId.substring(5); // Remove "file:" prefix
+                        const agentConfig = agentLoader.loadAgent(agentName);
+                        if (agentConfig && agentConfig.systemPrompt) {
+                            console.log('🤖 Using file-based agent:', agentName);
+                            options.customSystemPrompt = agentConfig.systemPrompt;
+                        }
+                    } else {
+                        // Database agent
+                        const agent = agentsDb.getAgentById(agentId);
+                        if (agent && agent.systemPrompt) {
+                            console.log('🤖 Using agent:', agent.displayName);
+                            options.customSystemPrompt = agent.systemPrompt;
+                        }
+                    }
+                }
+
                 // Use Claude Agents SDK
-                await queryClaudeSDK(data.command, data.options, ws);
+                await queryClaudeSDK(data.command, options, ws);
             } else if (data.type === 'cursor-command') {
                 console.log('[DEBUG] Cursor message:', data.command || '[Continue/Resume]');
                 console.log('📁 Project:', data.options?.cwd || 'Unknown');
