@@ -85,10 +85,9 @@ function mapCliOptionsToSDK(options = {}) {
     // Append to claude_code preset to preserve CLAUDE.md loading
     sdkOptions.systemPrompt = {
       type: 'preset',
-      preset: 'claude_code'
+      preset: 'claude_code',
+      append: options.customSystemPrompt  // Agent system prompt appended to claude_code preset
     };
-    // Add custom instructions that will be prepended to the conversation
-    sdkOptions.appendSystemPrompt = options.customSystemPrompt;
   } else {
     sdkOptions.systemPrompt = {
       type: 'preset',

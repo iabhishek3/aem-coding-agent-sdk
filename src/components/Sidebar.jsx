@@ -489,8 +489,8 @@ function Sidebar({
                 <MessageSquare className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">Claude Code UI</h1>
-                <p className="text-sm text-muted-foreground">AI coding assistant interface</p>
+                <h1 className="text-lg font-bold text-foreground">AEMplify</h1>
+                <p className="text-sm text-muted-foreground">AI-powered AEM development</p>
               </div>
             </a>
           ) : (
@@ -499,8 +499,8 @@ function Sidebar({
                 <MessageSquare className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">Claude Code UI</h1>
-                <p className="text-sm text-muted-foreground">AI coding assistant interface</p>
+                <h1 className="text-lg font-bold text-foreground">AEMplify</h1>
+                <p className="text-sm text-muted-foreground">AI-powered AEM development</p>
               </div>
             </div>
           )}
@@ -540,7 +540,7 @@ function Sidebar({
                   <MessageSquare className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">Claude Code UI</h1>
+                  <h1 className="text-lg font-semibold text-foreground">AEMplify</h1>
                   <p className="text-sm text-muted-foreground">Projects</p>
                 </div>
               </a>
@@ -550,7 +550,7 @@ function Sidebar({
                   <MessageSquare className="w-4 h-4 text-primary-foreground" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-semibold text-foreground">Claude Code UI</h1>
+                  <h1 className="text-lg font-semibold text-foreground">AEMplify</h1>
                   <p className="text-sm text-muted-foreground">Projects</p>
                 </div>
               </div>

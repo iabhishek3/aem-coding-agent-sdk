@@ -124,11 +124,11 @@ condition: on_failure
 ```yaml
 action: execute_commands
 commands:
-  - "mvn clean install -PautoInstallBundle -f core/pom.xml"
-  - "mvn clean install -PautoInstallPackage -f ui.apps/pom.xml"
+  - "mvn clean install -PautoInstallSinglePackage"
 verify:
   - Bundle is active
   - Component appears in sidekick
+note: "Builds all modules and deploys single package containing core bundle and ui.apps"
 ```
 
 ### Step 11: Report Completion

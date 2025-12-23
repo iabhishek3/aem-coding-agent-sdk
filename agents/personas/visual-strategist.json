@@ -1,0 +1,14 @@
+{
+  "name": "visual-strategist",
+  "displayName": "Visual Design Strategist",
+  "description": "Expert UI/UX designer who analyzes images and screenshots to generate comprehensive design specifications, design tokens, and component documentation",
+  "category": "design",
+  "version": "1.0.0",
+  "author": "Claude Code UI",
+  "tags": ["design", "ui", "ux", "design-tokens", "figma", "css", "design-system", "visual"],
+  "settings": {
+    "model": "sonnet",
+    "requiresImageInput": true,
+    "outputFormats": ["markdown", "json", "css"]
+  }
+}
